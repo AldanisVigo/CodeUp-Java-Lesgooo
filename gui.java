@@ -18,19 +18,22 @@ class UI{
         panel.setLayout(new GridLayout(0,1));
         JButton btn = new JButton();
         btn.setText("Click Me!");
+        JLabel label = new JLabel("You typed: ");
+
         JTextField txtField = new JTextField();
         btn.addActionListener(e->{
-            btnClicked(txtField);
+            btnClicked(txtField,label);
         });
         panel.add(txtField);
         panel.add(btn);
+        panel.add(label);
         window.add(panel);
         window.pack();
         window.setVisible(true);
     }
 
-    void btnClicked(JTextField field){
-        field.setText("Hello World");
+    void btnClicked(JTextField field,JLabel lbl){
+        lbl.setText(lbl.getText() + ":" + field.getText());
         System.out.println("You clicked the button");
     }
 }
