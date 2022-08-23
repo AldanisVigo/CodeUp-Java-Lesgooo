@@ -3,23 +3,23 @@ package com.vigoengineering.vigocalendar.views.calendar;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
-import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.provider.DataProvider;
+import com.vaadin.flow.data.provider.Query;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vigoengineering.vigocalendar.models.CalendarEntry;
+import com.vigoengineering.vigocalendar.services.CalendarEntryFilter;
 import com.vigoengineering.vigocalendar.services.CalendarEntryService;
 import com.vigoengineering.vigocalendar.views.MainView;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import javax.persistence.Convert;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
+import java.time.LocalDate;
+import java.util.Date;
 
 @PageTitle("Calendar")
 @Route(value = "calendar", layout = MainView.class)
@@ -29,6 +29,7 @@ public class CalendarView extends VerticalLayout {
     HorizontalLayout topMenu;
     TextField newEntryTitleTextField;
     TextArea newEntryDescriptionTextArea;
+    DataProvider entryDataProvider;
     @Autowired
     private final CalendarEntryService entryService;
 
@@ -72,17 +73,25 @@ public class CalendarView extends VerticalLayout {
         //Add entry button
         Button addEntryButton = new Button("Add Entry");
         addEntryButton.addClickListener(e-> {
+                try {
                     String newEntryTitle = newEntryTitleTextField.getValue();
                     String newEntryDescription = newEntryDescriptionTextArea.getValue();
 
                     System.out.printf("Entry Title %s\n", newEntryTitle);
                     System.out.printf("Entry Description: %s\n", newEntryDescription);
+
                     CalendarEntry newEntry = new CalendarEntry();
                     newEntry.setTitle(newEntryTitle);
                     newEntry.setDescription(newEntryDescription);
                     entryService.addNewEvent(newEntry);
-                    event_grid.getDataProvider().refreshAll();
-                });
+                    entryDataProvider.refreshAll();
+                    dialog.close();
+                }catch(Exception exception){
+                    System.out.println("+++++++++ERROR FOUND+++++++");
+                    System.out.println("CalendarView.java line 75");
+                    System.out.println(exception.getStackTrace());
+                }
+        });
 
         layout.add(closeButton,addEntryButton);
 
@@ -108,14 +117,22 @@ public class CalendarView extends VerticalLayout {
     }
 
     private Grid<CalendarEntry> createEventsGridElement(){
-        event_grid = new Grid<>(CalendarEntry.class, true);
-//        event_grid.addColumn(CalendarEntry::getId).setHeader("Event ID");
-//        event_grid.addColumn(CalendarEntry::getTitle).setHeader("Event Title");
-//        event_grid.addColumn(CalendarEntry::getDescription).setHeader("Event Description");
-        DataProvider entryDataProvider = DataProvider.fromFilteringCallbacks(entryService::getAllEvents,entryService::getAllEvents).withConfigurableFilter();
+        event_grid = new Grid<>(CalendarEntry.class, false);
+        event_grid.addColumn(CalendarEntry::getId).setHeader("Event ID");
+        event_grid.addColumn(CalendarEntry::getTitle).setHeader("Event Title");
+        event_grid.addColumn(CalendarEntry::getDescription).setHeader("Event Description");
+        Query<CalendarEntry, CalendarEntryFilter> calendarDateFilter = new Query<>();
+        LocalDate calDate = cal.getValue();
+        calendarDateFilter.getFilter().get().setEventDate(calDate);
+        entryDataProvider = DataProvider.fromFilteringCallbacks(entryService::findBy,entryService::countBy).withConfigurableFilter();
+
+        event_grid.setItems(entryDataProvider);
+        event_grid.addCellFocusListener(entry->{
+            System.out.println(entry.getItem().get().getTitle());
+        });
         event_grid.setWidth("70%");
-        List<CalendarEntry> calendarEntries = entryService.getAllEvents();
-        event_grid.setItems(calendarEntries);
+//        List<CalendarEntry> calendarEntries = entryService.getAllEvents();
+//        event_grid.setItems(calendarEntries);
         return event_grid;
     }
 
